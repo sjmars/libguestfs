@@ -64,6 +64,9 @@ let parse_cmdline () =
   let output_password = ref None in
   let output_storage = ref None in
   let password_file = ref None in
+  let rhv_cafile = ref None in
+  let rhv_direct = ref false in
+  let rhv_verifypeer = ref false in
   let vddk_config = ref None in
   let vddk_cookie = ref None in
   let vddk_libdir = ref None in
@@ -142,6 +145,8 @@ let parse_cmdline () =
     | "disk" | "local" -> output_mode := `Local
     | "null" -> output_mode := `Null
     | "ovirt" | "rhv" | "rhev" -> output_mode := `RHV
+    | "ovirt-upload" | "ovirt_upload" | "rhv-upload" | "rhv_upload" ->
+       output_mode := `RHV_Upload
     | "qemu" -> output_mode := `QEmu
     | "vdsm" -> output_mode := `VDSM
     | s ->
@@ -217,6 +222,10 @@ let parse_cmdline () =
     [ L"password-file" ], Getopt.String ("file", set_string_option_once "--password-file" password_file),
                                             s_"Use password from file";
     [ L"print-source" ], Getopt.Set print_source, s_"Print source and stop";
+    [ L"rhv-cafile" ], Getopt.String ("ca.pem", set_string_option_once "--rhv-cafile" rhv_cafile),
+                                    s_"For -o rhv-upload, set ‘ca.pem’ file";
+    [ L"rhv-direct" ], Getopt.Set rhv_direct, s_"Use direct transfer mode";
+    [ L"rhv-verifypeer" ], Getopt.Set rhv_verifypeer, s_"Verify server identity";
     [ L"root" ],    Getopt.String ("ask|... ", set_root_choice), s_"How to choose root filesystem";
     [ L"vddk-config" ], Getopt.String ("filename", set_string_option_once "--vddk-config" vddk_config),
                                             s_"Set VDDK config file";
@@ -306,6 +315,9 @@ read the man page virt-v2v(1).
   let password_file = !password_file in
   let print_source = !print_source in
   let qemu_boot = !qemu_boot in
+  let rhv_cafile = !rhv_cafile in
+  let rhv_direct = !rhv_direct in
+  let rhv_verifypeer = !rhv_verifypeer in
   let root_choice = !root_choice in
   let vddk_options =
       { vddk_config = !vddk_config;
@@ -535,6 +547,35 @@ read the man page virt-v2v(1).
       if qemu_boot then
         error_option_cannot_be_used_in_output_mode "rhv" "--qemu-boot";
       Output_rhv.output_rhv os output_alloc,
+      output_format, output_alloc
+
+    | `RHV_Upload ->
+      let output_conn =
+        match output_conn with
+        | None ->
+           error (f_"-o rhv-upload: use ‘-oc’ to point to the oVirt or RHV server REST API URL, which is usually https://servername/ovirt-engine/api")
+        | Some oc -> oc in
+      (* In theory we could make the password optional in future. *)
+      let output_password =
+        match output_password with
+        | None ->
+           error (f_"-o rhv-upload: output password file was not specified, use ‘-op’ to point to a file which contains the password used to connect to the oVirt or RHV server")
+        | Some op -> op in
+      let os =
+        match output_storage with
+        | None ->
+           error (f_"-o rhv-upload: output storage was not specified, use ‘-os’");
+        | Some os -> os in
+      if qemu_boot then
+        error_option_cannot_be_used_in_output_mode "rhv-upload" "--qemu-boot";
+      let rhv_cafile =
+        match rhv_cafile with
+        | None ->
+           error (f_"-o rhv-upload: must use ‘--rhv-cafile’ to supply the path to the oVirt or RHV server’s ‘ca.pem’ file")
+        | Some rhv_cafile -> rhv_cafile in
+      Output_rhv_upload.output_rhv_upload output_alloc output_conn
+                                          output_password os
+                                          rhv_cafile rhv_direct rhv_verifypeer,
       output_format, output_alloc
 
     | `VDSM ->
