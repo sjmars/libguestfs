@@ -26,7 +26,6 @@ open Common_gettext.Gettext
 open Types
 open Utils
 
-let python3 = "python3" (* Defined by PEP 394 *)
 let pidfile_timeout = 30
 let finalization_timeout = 5*60
 
@@ -83,14 +82,14 @@ class output_rhv_upload output_alloc output_conn
       error (f_"nbdkit is not new enough, you need to upgrade to nbdkit ≥ 1.1.16")
   in
 
-  (* Check that the python3 plugin is installed and working
+  (* Check that the python plugin is installed and working
    * and can load the plugin script.
    *)
-  let error_unless_nbdkit_python3_working () =
+  let error_unless_nbdkit_python_working () =
     let cmd = sprintf "nbdkit %s %s --dump-plugin >/dev/null"
-                      python3 (quote plugin) in
+                      "python" (quote plugin) in
     if Sys.command cmd <> 0 then
-      error (f_"nbdkit Python 3 plugin is not installed or not working.  It is required if you want to use ‘-o rhv-upload’.
+      error (f_"nbdkit Python plugin is not installed or not working.  It is required if you want to use ‘-o rhv-upload’.
 
 See also \"OUTPUT TO RHV\" in the virt-v2v(1) manual.")
   in
@@ -138,7 +137,7 @@ See also \"OUTPUT TO RHV\" in the virt-v2v(1) manual.")
       "--newstyle";             (* use newstyle NBD protocol *)
       "--exportname"; "/";
 
-      "python3";                (* use the nbdkit Python 3 plugin *)
+      "python";                 (* use the nbdkit Python plugin *)
       plugin;                   (* Python plugin script *)
     ] in
     let args = if verbose () then args @ ["--verbose"] else args in
@@ -154,7 +153,7 @@ object
 
   method precheck () =
     error_unless_nbdkit_working ();
-    error_unless_nbdkit_python3_working ();
+    error_unless_nbdkit_python_working ();
     if have_selinux then
       error_unless_nbdkit_compiled_with_selinux ()
 
@@ -180,7 +179,7 @@ object
     with_open_out
       json_param_file
       (fun chan -> output_string chan (JSON.string_of_doc json_params));
-    if run_command [ python3; precheck; json_param_file ] <> 0 then
+    if run_command [ "python"; precheck; json_param_file ] <> 0 then
       error (f_"failed server prechecks, see earlier errors");
 
     (* Create an nbdkit instance for each disk and set the
@@ -327,7 +326,7 @@ If the messages above are not sufficient to diagnose the problem then add the �
 
     let ovf_file = tmpdir // "vm.ovf" in
     with_open_out ovf_file (fun chan -> output_string chan ovf);
-    if run_command [ python3; createvm; json_param_file; ovf_file ] <> 0 then
+    if run_command [ "python"; createvm; json_param_file; ovf_file ] <> 0 then
       error (f_"failed to create virtual machine, see earlier errors")
 
 end
