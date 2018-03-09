@@ -19,8 +19,7 @@
 open Printf
 open Unix
 
-open Std_utils
-open Tools_utils
+open Common_utils
 open Unix_utils
 open Common_gettext.Gettext
 
@@ -315,7 +314,7 @@ If the messages above are not sufficient to diagnose the problem then add the â€
 
     (* Create the metadata. *)
     let ovf =
-      Create_ovf.create_ovf source targets guestcaps inspect
+      OVF.create_ovf source targets guestcaps inspect
                             output_alloc
                             sd_uuid image_uuids vol_uuids vm_uuid
                             OVirt in
